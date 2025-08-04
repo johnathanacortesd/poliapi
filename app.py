@@ -12,7 +12,7 @@ import time
 from unidecode import unidecode
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering
-from difflib import SequenceMatcher # <-- ESTA LÍNEA ES LA CORRECCIÓN
+from difflib import SequenceMatcher # <-- ESTA LÍNEA ES LA CORRECCIÓN. ASEGÚRATE DE QUE ESTÉ AQUÍ.
 
 # --- Configuración de la página, Modelos y Constantes ---
 st.set_page_config(page_title="Análisis de Noticias de la Policía", layout="wide")
@@ -40,7 +40,6 @@ def check_password():
         password = st.text_input("Ingresa la contraseña para continuar:", type="password")
         submitted = st.form_submit_button("Ingresar")
         if submitted:
-            # Compara la contraseña con el secret de Streamlit
             if password == st.secrets.get("APP_PASSWORD", "INVALID_DEFAULT"):
                 st.session_state["password_correct"] = True
                 st.rerun()
@@ -156,14 +155,10 @@ class AnalizadorContenidoIA:
 
         processed_count = 0
         for cluster_id, group in df_cluster.groupby('cluster_id'):
-            # Usar el resumen más largo del cluster como representante
             representante_idx = group['resumen_corto'].str.len().idxmax()
             texto_representante = df_cluster.loc[representante_idx, 'resumen_corto']
-            
-            # Analizar el representante una sola vez
             tono_grupo, tema_grupo, subtema_grupo = self._analizar_contenido(texto_representante)
             
-            # Asignar el mismo resultado a todo el grupo
             for idx in group.index:
                 tonos[idx], temas[idx], subtemas[idx] = tono_grupo, tema_grupo, subtema_grupo
             
@@ -205,11 +200,9 @@ def are_duplicates(row1, row2, key_map, title_similarity_threshold=0.85):
     titulo1 = normalize_title_for_comparison(row1.get(key_map['titulo']))
     titulo2 = normalize_title_for_comparison(row2.get(key_map['titulo']))
     
-    # Si los títulos son idénticos y no están vacíos, es un duplicado fuerte
     if titulo1 == titulo2 and titulo1 != "":
         return True
     
-    # Si no, comprobar similitud del título
     if SequenceMatcher(None, titulo1, titulo2).ratio() >= title_similarity_threshold:
         return True
 
@@ -217,7 +210,6 @@ def are_duplicates(row1, row2, key_map, title_similarity_threshold=0.85):
 
 def normalize_title_for_comparison(title):
     if not isinstance(title, str): return ""
-    # Elimina todo después de un "|" y normaliza para comparación
     cleaned_title = re.sub(r'\s*\|\s*.+$', '', title).strip()
     return re.sub(r'\W+', ' ', cleaned_title).lower().strip()
 
@@ -226,7 +218,6 @@ def run_dossier_logic(sheet):
     headers = [cell.value for cell in sheet[1] if cell.value]
     norm_keys = [norm_key(h) for h in headers]
     
-    # Mapeo de columnas esperadas
     key_map = {nk: nk for nk in norm_keys}
     key_map.update({
         'titulo': norm_key('Título'), 'resumen': norm_key('Resumen - Aclaracion'),
@@ -241,7 +232,6 @@ def run_dossier_logic(sheet):
         if all(c is None for c in row): continue
         base_data = {norm_keys[i]: cell for i, cell in enumerate(row) if i < len(norm_keys)}
         
-        # Separar por menciones si es necesario
         menciones = [m.strip() for m in str(base_data.get(key_map['menciones']) or '').split(';') if m.strip()]
         if not menciones:
             processed_rows.append(base_data)
@@ -281,14 +271,13 @@ def generate_output_excel(all_processed_rows, key_map):
         "ID Noticia", "Fecha", "Hora", "Medio", "Tipo de Medio", "Sección - Programa",
         "Título", "Autor - Conductor", "Nro. Pagina", "Dimensión",
         "Duración - Nro. Caracteres", "CPE", "Tier", "Audiencia",
-        "Tono", "Tono AI", "Tema AI", "Subtema AI", # Nuevas columnas de IA
+        "Tono", "Tono AI", "Tema AI", "Subtema AI",
         "Resumen - Aclaracion", "Link Nota",
         "Link (Streaming - Imagen)", "Menciones - Empresa"
     ]
     out_sheet.append(final_order)
 
     for row_data in all_processed_rows:
-        # Limpieza final antes de escribir
         if not row_data.get('is_duplicate'):
             row_data[key_map['titulo']] = clean_title_for_output(row_data.get(key_map['titulo']))
         row_data[key_map['resumen']] = corregir_texto(row_data.get(key_map['resumen']))
@@ -296,7 +285,7 @@ def generate_output_excel(all_processed_rows, key_map):
         row_to_append = []
         for header in final_order:
             key = norm_key(header)
-            val = row_data.get(key, "") # Usar "" como default
+            val = row_data.get(key, "")
             row_to_append.append(val)
         out_sheet.append(row_to_append)
 
@@ -326,7 +315,6 @@ def run_full_process(dossier_file):
     
     if rows_to_analyze:
         for row in rows_to_analyze:
-            # Crear resumen corto para la API
             titulo = str(row.get(key_map.get('titulo', ''), ''))
             resumen = str(row.get(key_map.get('resumen', ''), ''))
             row['resumen_api'] = f"{titulo}. {resumen[:150]}"
@@ -345,7 +333,6 @@ def run_full_process(dossier_file):
             
             status.update(label="✅ Análisis de contenido completado.", state="complete")
         
-        # Mapear los resultados de vuelta a la lista original
         results_map = df_temp_api.set_index('original_index')[[key_map['tonoai'], key_map['temaai'], key_map['subtemaai']]].to_dict('index')
         for row in all_processed_rows:
             if not row.get('is_duplicate'):
@@ -379,7 +366,6 @@ if check_password():
                 if not dossier_file:
                     st.warning("Por favor, carga el archivo de dossier para continuar.")
                 else:
-                    # Limpiar estado de sesión anterior antes de empezar un nuevo proceso
                     password_correct = st.session_state.get("password_correct", False)
                     st.session_state.clear()
                     st.session_state["password_correct"] = password_correct
@@ -396,7 +382,6 @@ if check_password():
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         if st.button("🧹 Empezar un Nuevo Análisis"):
-            # Limpiar estado para un nuevo ciclo
             password_correct = st.session_state.get("password_correct", False)
             st.session_state.clear()
             st.session_state["password_correct"] = password_correct
