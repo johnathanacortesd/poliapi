@@ -12,6 +12,7 @@ import time
 from unidecode import unidecode
 import numpy as np
 from sklearn.cluster import AgglomerativeClustering
+from difflib import SequenceMatcher # <-- ESTA LÍNEA ES LA CORRECCIÓN
 
 # --- Configuración de la página, Modelos y Constantes ---
 st.set_page_config(page_title="Análisis de Noticias de la Policía", layout="wide")
