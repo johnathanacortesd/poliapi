@@ -1,0 +1,9 @@
+streamlit
+pandas
+openpyxl
+openai==0.28.0  # Fijamos la versión que usa el notebook para asegurar compatibilidad
+tqdm
+scikit-learn
+unidecode
+nltk
+joblib
