@@ -18,10 +18,10 @@ from sklearn.cluster import AgglomerativeClustering
 # --- Configuración de la página y Modelos ---
 st.set_page_config(page_title="Análisis de Noticias para Policía Nacional", layout="wide")
 OPENAI_MODEL_EMBEDDING = 'text-embedding-3-small'
-# MODELO RESTAURADO SEGÚN TU ESPECIFICACIÓN
 OPENAI_MODEL_CLASIFICACION = "gpt-4.1-nano-2025-04-14"
 MARCA_FIJA = "Policía Nacional de Colombia"
-TEXT_TRUNCATION_LIMIT = 2200 # Límite de caracteres a enviar a la API
+# LÍMITE DE CARACTERES REDUCIDO PARA MAYOR ESTABILIDAD
+TEXT_TRUNCATION_LIMIT = 2500
 
 # ==============================================================================
 # SECCIÓN DE AUTENTICACIÓN
@@ -33,7 +33,6 @@ def check_password():
         password = st.text_input("Ingresa la contraseña para continuar:", type="password")
         submitted = st.form_submit_button("Ingresar")
         if submitted:
-            # Asegúrate de tener "APP_PASSWORD" en tus secrets de Streamlit
             if password == st.secrets.get("APP_PASSWORD", "INVALID_DEFAULT"):
                 st.session_state["password_correct"] = True; st.rerun()
             else: st.error("La contraseña es incorrecta.")
@@ -52,6 +51,7 @@ def _get_embedding_cached(texto, cache):
     if limpio in cache: return cache[limpio]
     try:
         time.sleep(0.02)
+        # Se aplica la truncación aquí
         response = openai.Embedding.create(input=[limpio[:TEXT_TRUNCATION_LIMIT]], model=OPENAI_MODEL_EMBEDDING)
         embedding = response['data'][0]['embedding']
         cache[limpio] = embedding
@@ -363,6 +363,7 @@ def are_duplicates(row1, row2, key_map, title_similarity_threshold=0.85, date_pr
         if titulo1 and titulo1 == titulo2: return True
             
     return False
+
 # ==============================================================================
 # LÓGICA PRINCIPAL DE PROCESAMIENTO
 # ==============================================================================
@@ -501,7 +502,10 @@ def run_full_process(dossier_file, region_file, internet_file):
 
     rows_to_analyze = [row for row in all_processed_rows if not row.get('is_duplicate')]
     if rows_to_analyze:
-        for row in rows_to_analyze: row['resumen_api'] = str(row.get(key_map['titulo'], '')) + ". " + str(row.get(key_map['resumen'], ''))
+        # Aquí se concatena el Título y el Resumen para crear el texto de análisis
+        for row in rows_to_analyze: 
+            row['resumen_api'] = str(row.get(key_map['titulo'], '')) + ". " + str(row.get(key_map['resumen'], ''))
+        
         df_temp_api = pd.DataFrame(rows_to_analyze)
         
         with st.status(f"Paso 3/6: Clasificando Tono para {len(rows_to_analyze)} noticias...", expanded=True) as status:
